@@ -5,6 +5,7 @@ pipeline {
         APP_SERVER     = "mohancbe5202@34.45.94.20"
         IMAGE_NAME     = "flask-gunicorn-app"
         CONTAINER_NAME = "flask-gunicorn-container"
+        APP_DIR        = "/home/mohancbe5202/flask-app"
     }
 
     stages {
@@ -16,24 +17,27 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
-            steps {
-                sh 'docker build -t $IMAGE_NAME:latest .'
-            }
-        }
-
         stage('Deploy to Application Server') {
             steps {
                 sshagent(['app-server-ssh']) {
                     sh """
-                    ssh -o StrictHostKeyChecking=no $APP_SERVER '
-                        docker rm -f $CONTAINER_NAME || true
-                        docker run -d \
-                          --restart always \
-                          -p 5000:5000 \
-                          --name $CONTAINER_NAME \
-                          $IMAGE_NAME:latest
-                    '
+                    ssh -o StrictHostKeyChecking=no ${APP_SERVER} << 'EOF'
+                        set -e
+                        cd ${APP_DIR}
+
+                        echo "Stopping old container..."
+                        docker rm -f ${CONTAINER_NAME} || true
+
+                        echo "Building new image..."
+                        docker build -t ${IMAGE_NAME}:latest .
+
+                        echo "Starting container..."
+                        docker run -d \\
+                          --restart always \\
+                          -p 5000:5000 \\
+                          --name ${CONTAINER_NAME} \\
+                          ${IMAGE_NAME}:latest
+                    EOF
                     """
                 }
             }
