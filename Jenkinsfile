@@ -25,10 +25,13 @@ pipeline {
                         set -e
                         cd ${APP_DIR}
 
-                        echo "Stopping old container..."
-                        docker rm -f ${CONTAINER_NAME} || true
+                        echo "Stopping old container if exists..."
+                        docker ps -q --filter "name=${CONTAINER_NAME}" | grep -q . && docker rm -f ${CONTAINER_NAME} || echo "No container running"
 
-                        echo "Building new image..."
+                        echo "Killing any old Gunicorn processes..."
+                        pkill -f "gunicorn.*app:app" || echo "No Gunicorn process running"
+
+                        echo "Building new Docker image..."
                         docker build -t ${IMAGE_NAME}:latest .
 
                         echo "Starting container..."
@@ -44,4 +47,5 @@ pipeline {
         }
     }
 }
+
 
