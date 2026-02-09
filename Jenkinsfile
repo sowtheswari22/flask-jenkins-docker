@@ -6,6 +6,8 @@ pipeline {
         IMAGE_NAME     = "flask-gunicorn-app"
         CONTAINER_NAME = "flask-gunicorn-container"
         APP_DIR        = "/home/mohancbe5202/flask-app"
+        HOST_PORT      = "5000"  // Change if needed to avoid port conflicts
+        CONTAINER_PORT = "5000"
     }
 
     stages {
@@ -25,11 +27,8 @@ pipeline {
                         set -e
                         cd ${APP_DIR}
 
-                        echo "Stopping old container if exists..."
-                        docker ps -q --filter "name=${CONTAINER_NAME}" | grep -q . && docker rm -f ${CONTAINER_NAME} || echo "No container running"
-
-                        echo "Killing any old Gunicorn processes..."
-                        pkill -f "gunicorn.*app:app" || echo "No Gunicorn process running"
+                        echo "Stopping any old containers of this image..."
+                        docker ps -a -q --filter "ancestor=${IMAGE_NAME}" | xargs -r docker rm -f || echo "No old containers"
 
                         echo "Building new Docker image..."
                         docker build -t ${IMAGE_NAME}:latest .
@@ -37,7 +36,7 @@ pipeline {
                         echo "Starting container..."
                         docker run -d \\
                           --restart always \\
-                          -p 5000:5000 \\
+                          -p ${HOST_PORT}:${CONTAINER_PORT} \\
                           --name ${CONTAINER_NAME} \\
                           ${IMAGE_NAME}:latest
                     EOF
@@ -47,5 +46,4 @@ pipeline {
         }
     }
 }
-
 
